@@ -1,0 +1,11 @@
+ [LOGIN] [13:32:28.673] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:41:42.207] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:43:02.214] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:44:14.031] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:44:55.392] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:46:11.207] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:50:09.030] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:50:48.436] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}
+ [LOGIN] [13:51:34.520] {"Status":false,"Resposta":"Usuário e/ou Senha incorreto(s).","Dados":[]}
+ [LOGIN] [13:51:40.350] {"Status":false,"Resposta":"Usuário e/ou Senha incorreto(s).","Dados":[]}
+ [LOGIN] [13:51:49.478] {"Status":true,"Resposta":"","Dados":{"id":76,"usuario":"JOAO PEDRO"}}

@@ -1,0 +1,17 @@
+program TablesMaintance;
+
+uses
+  System.StartUpCopy,
+  FMX.Forms,
+  tableMaintance in 'tableMaintance.pas' {frmPrincipal},
+  Vcl.CheckLst in 'units\Vcl.CheckLst.pas',
+  uComp in 'units\uComp.pas',
+  uCompJSON in '..\PDV\units\uCompJSON.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TfrmPrincipal, frmPrincipal);
+  Application.Run;
+end.

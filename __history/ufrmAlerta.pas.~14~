@@ -1,0 +1,93 @@
+unit ufrmAlerta;
+
+interface
+
+uses
+  System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
+  FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.StdCtrls,
+  FMX.Controls.Presentation, System.Actions, FMX.ActnList, FMX.Layouts;
+
+type
+  TConfirmar = procedure(Sender: TObject) of object;
+  TCancelar  = procedure(Sender: TObject) of object;
+
+  TfrmAlerta = class(TForm)
+    ActionList1: TActionList;
+    acEscape: TAction;
+    pAlerta: TPanel;
+    btOkAlerta: TButton;
+    lbTituloAlerta: TLabel;
+    lbMsgAlerta: TLabel;
+    StyleBook1: TStyleBook;
+    lBotoes: TLayout;
+    Button1: TButton;
+    Button2: TButton;
+    procedure acEscapeExecute(Sender: TObject);
+    procedure btOkAlertaClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+  private
+    FConfirmar : TConfirmar;
+    FCancelar  : TCancelar;
+    { Private declarations }
+  public
+    property  Confirmar : TConfirmar read FConfirmar write FConfirmar;
+    property  Cancelar  : TCancelar  read FCancelar  write FCancelar;
+    procedure CarregarMensagem(mensagem: string; titulo: string = 'Alerta'; decisao: boolean = false);
+    { Public declarations }
+  end;
+
+var
+  frmAlerta: TfrmAlerta;
+
+implementation
+
+{$R *.fmx}
+
+procedure TfrmAlerta.acEscapeExecute(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfrmAlerta.btOkAlertaClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfrmAlerta.Button2Click(Sender: TObject);
+begin
+  Confirmar(Sender);
+end;
+
+procedure TfrmAlerta.CarregarMensagem(mensagem, titulo: string; decisao: boolean = false);
+begin
+  try
+    if not decisao then
+    begin
+      lBotoes.Visible := false;
+      btOkAlerta.Visible := true;
+      lbTituloAlerta.Text := titulo;
+      lbMsgAlerta.Text    := mensagem;
+      btOkAlerta.SetFocus;
+    end
+    else
+    begin
+      lBotoes.Visible := true;
+      btOkAlerta.Visible := false;
+      lbTituloAlerta.Text := titulo;
+      lbMsgAlerta.Text    := mensagem;
+      btOkAlerta.SetFocus;
+    end;
+  except
+    on E: Exception do
+  end;
+end;
+
+procedure TfrmAlerta.FormCreate(Sender: TObject);
+begin
+  btOkAlerta.Text := 'OK[ESC]';
+  btOkAlerta.TextSettings.Font.Family := 'Roboto';
+  btOkAlerta.TextSettings.Font.Size   := 16;
+end;
+
+end.

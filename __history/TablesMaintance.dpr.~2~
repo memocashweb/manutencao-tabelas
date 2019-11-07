@@ -1,0 +1,14 @@
+program TablesMaintance;
+
+uses
+  System.StartUpCopy,
+  FMX.Forms,
+  tableMaintance in 'tableMaintance.pas' {frmPrincipal};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TfrmPrincipal, frmPrincipal);
+  Application.Run;
+end.

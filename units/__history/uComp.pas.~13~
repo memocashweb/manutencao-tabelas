@@ -1,0 +1,531 @@
+unit uComp;
+
+interface
+
+uses
+  System.JSON, FireDAC.Comp.Client, System.Classes,
+  System.Generics.Collections;
+
+type
+  TMateriaPrima = class(TComponent)
+    public
+      id: integer;
+      descricao,
+      qtd: string;
+
+      controla_estoque: Boolean;
+  end;
+
+function  GetMateriaPrima(id_produto: integer): TObjectList<TMateriaPrima>;
+function  AdicionarCalculoJurosSQL(tipo_juros: string; somar: Boolean = false): string;
+
+function  GetJurosCliente(id_cliente: Integer; id_cliente_origem: Boolean): Double;
+procedure SetValorSenha(var senha: integer; _Conexao: TFDConnection;
+          senha_inicial, senha_final: integer; Pooled: Boolean = false);
+function  GerarRetornoJSON(status: Boolean; resposta: string; dados: string=''): TJSONObject; overload;
+function  GerarRetornoJSON(status: Boolean; resposta: string; dados: TJSONArray): TJSONObject; overload;
+function  GerarRetornoJSON(status: Boolean; resposta: string; dados: TJSONObject): TJSONObject; overload;
+function  GerarRetornoJSON(status: integer; resposta: string; dados: TJSONObject): TJSONObject; overload;
+function  GerarRetornoJSONVenda(dados: TJSONArray): TJSONObject;
+
+function  CalcularRegraDeTres(valor_total: Double; valor_parcial: Double): Double;
+
+procedure GerarLog(arquivo_descricao, titulo, texto: string;
+          pular_linha: Boolean = false);
+procedure Log(Horario: TDateTime; IP: string; Descricao: string);
+procedure LogErro(Descricao: string; IP: string = '');
+procedure LogTable(Horario: TDateTime; Acao: string; Descricao: string = '');
+
+function  RequisitarAPI(metodo: string; JSONToSender: TStringList) : TJSONObject;
+function  TestarConexao: Boolean;
+function  CifrarSenha(senha: string): string;
+function  RemoveAcentos(texto: string): string;
+function  MDouble(txt: string): Double;
+function  ClsStr(str: string) : string;
+procedure SomenteNumInt(Sender: TObject; var Key: Word; var KeyChar: Char;
+          Shift: TShiftState);
+
+implementation
+
+uses
+  System.SysUtils, Winapi.Windows, IdHashMessageDigest, FMX.Edit, IdHTTP,
+  ACBrUtil;
+
+function RequisitarAPI(metodo: string;
+  JSONToSender: TStringList): TJSONObject;
+var
+  HTTP: TIdHTTP;
+  Return: TStringStream;
+begin
+  Return := TStringStream.Create;
+  HTTP   := TIdHTTP.Create(nil);
+
+  try
+    HTTP.HandleRedirects := true;
+    HTTP.Request.Method := 'POST';
+    HTTP.Request.ContentType := 'application/x-www-form-urlencoded';
+
+    HTTP.Post('http://api.memocashweb.com/' + metodo, JsonToSender, Return);
+    result := TJSONObject.ParseJSONValue(Return.DataString) as TJSONObject;
+  except
+    on E: Exception do
+      result := nil;
+  end;
+
+  FreeAndNil(Return);
+  FreeAndNil(HTTP);
+end;
+
+function  TestarConexao: Boolean;
+var
+  idHTTP: TIdHTTP;
+begin
+  idHTTP := TIdHTTP.Create(nil);
+
+  try
+    idHTTP.ProxyParams.BasicAuthentication := true;
+    idHTTP.Request.BasicAuthentication := true;
+    IdHTTP.ConnectTimeout := 5000;
+    idHTTP.ReadTimeout    := 5000;
+    idHTTP.Get('http://www.google.com/');
+    result := true;
+  except on E: Exception do
+    result := false;
+  end;
+
+  FreeAndNil(idHTTP);
+end;
+
+function RemoveAcentos(texto: string): string;
+const
+  ComAcento = '‡‚ÍÙ˚„ı·ÈÌÛ˙Á¸¿¬ ‘€√’¡…Õ”⁄«‹';
+  SemAcento = 'aaeouaoaeioucuAAEOUAOAEIOUCU';
+var
+  I: integer;
+begin
+  if texto.IsEmpty then begin
+    result := '';
+    Exit;
+  end;
+
+  for I := 0 to Length(texto) do begin
+    if Pos(texto[I], ComAcento) <> 0 then
+      texto[I] := SemAcento[Pos(texto[I], ComAcento)];
+  end;
+
+  result := texto;
+end;
+
+function CalcularRegraDeTres(valor_total: Double; valor_parcial: Double): Double;
+begin
+  result := ACBrUtil.RoundABNT((valor_parcial * 100) / valor_total, 2);
+end;
+
+function CifrarSenha(senha: string): string;
+var
+  idmd5: TIdHashMessageDigest5;
+begin
+  idmd5 := TIdHashMessageDigest5.Create;
+  try
+    result := idmd5.HashStringAsHex(senha);
+  finally
+    idmd5.Free;
+  end;
+end;
+
+function ObterValorJurosCliente(cabecalho: Boolean; id: integer;
+  id_origem: Boolean; conexao: TFDConnection): Double;
+var
+  qry: TFDQuery;
+begin
+  qry := TFDQuery.Create(nil);
+  qry.Connection := Conexao;
+
+  with qry do begin
+    if not cabecalho then begin
+      SQL.Add('SELECT prazo_taxa_juros FROM clientes WHERE id = :id AND id_origem = :id_origem');
+      ParamByName('id_origem').AsBoolean := id_origem;
+    end
+    else begin
+      with SQL do begin
+        Add('SELECT T1.prazo_taxa_juros FROM clientes AS T1');
+        Add('INNER JOIN contas_receber AS T2 ON T2.id_cliente = T1.id');
+        Add('AND T2.id_cliente_origem = T1.id_origem');
+        Add('WHERE T2.id = :id;');
+      end;
+    end;
+    ParamByName('id').AsInteger := id;
+    Open;
+
+    if RecordCount > 0 then
+      result := FieldByName('prazo_taxa_juros').AsFloat
+    else
+      result := 0;
+
+    Close;
+  end;
+  FreeAndNil(qry);
+end;
+
+function GerarRetornoJSON(status: Boolean; resposta: string;
+  dados: string=''): TJSONObject; overload;
+begin
+  result := TJSONObject.Create(nil);
+  result.AddPair('Status', TJSONBool.Create(status));
+  result.AddPair('Resposta', TJSONString.Create(resposta));
+  result.AddPair('Dados', TJSONString.Create(dados));
+end;
+
+function  GerarRetornoJSON(status: Boolean; resposta: string;
+  dados: TJSONObject): TJSONObject; overload;
+begin
+  result := TJSONObject.Create(nil);
+  result.AddPair('Status', TJSONBool.Create(status));
+  result.AddPair('Resposta', TJSONString.Create(resposta));
+  result.AddPair('Dados', dados);
+end;
+
+function  GerarRetornoJSON(status: integer; resposta: string;
+  dados: TJSONObject): TJSONObject; overload;
+begin
+  result := TJSONObject.Create(nil);
+  result.AddPair('Status', TJSONNumber.Create(status));
+  result.AddPair('Resposta', TJSONString.Create(resposta));
+  result.AddPair('Dados', dados);
+end;
+
+function  GerarRetornoJSONVenda(dados: TJSONArray): TJSONObject;
+begin
+  result := TJSONObject.Create(nil);
+  result.AddPair('Dados',dados);
+end;
+
+function  GerarRetornoJSON(status: Boolean; resposta: string;
+  dados: TJSONArray): TJSONObject; overload;
+begin
+  result := TJSONObject.Create(nil);
+  result.AddPair('Status', TJSONBool.Create(status));
+  result.AddPair('Resposta', TJSONString.Create(resposta));
+  result.AddPair('Dados', dados);
+end;
+
+procedure GerarLog(arquivo_descricao, titulo, texto: string;
+  pular_linha: Boolean = false);
+var
+  Log: TextFile;
+  caminho,
+  log_texto: string;
+begin
+  log_texto := '';
+  caminho   := ExtractFilePath(ParamStr(0)) + arquivo_descricao + '.txt';
+  AssignFile(Log, caminho);
+
+  if FileExists(caminho) then
+    Append(Log)
+  else
+    Rewrite(Log);
+
+  log_texto := '[' + FormatDateTime('dd/mm/yy hh:nn:ss.zzz', NOW()) + '] ';
+
+  if not titulo.IsEmpty then
+  begin
+    log_texto := log_texto + titulo.ToUpper;
+
+    if not texto.IsEmpty then
+      log_texto := log_texto + ' - ';
+  end;
+
+  log_texto := log_texto + texto;
+
+  if pular_linha then
+    log_texto := log_texto + #13#13;
+
+  WriteLn(Log, log_texto);
+  CloseFile(Log);
+end;
+
+procedure LogTable(Horario: TDateTime; Acao: string; Descricao: string = '');
+var
+  Log: TextFile;
+  LogText,
+  Arquivo,
+  CaminhoPasta: string;
+begin
+  CaminhoPasta := 'C:\Programas MemoCash\ManutencaoTabelas\Win32\Debug\Log\';
+  Arquivo      := CaminhoPasta + FormatDateTime('dd_mm_yyyy', Horario);
+
+  if not DirectoryExists(CaminhoPasta) then
+    ForceDirectories(CaminhoPasta);
+
+  if not DirectoryExists(Arquivo) then
+    ForceDirectories(Arquivo);
+
+  Arquivo := Arquivo + '\' + Acao + '.txt';
+  //AssignFile(Log, ExtractFilePath(ParamStr(0)) + Arquivo);
+  AssignFile(Log, Arquivo);
+
+  //if not FileExists(ExtractFilePath(ParamStr(0)) + Arquivo) then
+  if not FileExists(Arquivo) then
+    Rewrite(Log)
+  else
+    Append(Log);
+
+  LogText := '[' + FormatDateTime('hh:nn:ss.zzz', Horario) + ']';
+
+ { if not IP.IsEmpty then
+    LogText := LogText + '[' + IP.PadRight(15) + ']';    }
+
+  LogText := ' [' + Acao + '] ' +LogText + ' ' + Descricao;
+
+  WriteLn(Log, LogText);
+  CloseFile(Log);
+end;
+
+procedure Log(Horario: TDateTime; IP: string; Descricao: string);
+var
+  Log: TextFile;
+  LogText,
+  Arquivo,
+  CaminhoPasta: string;
+begin
+  {$IFDEF DEBUG}
+    CaminhoPasta := 'C:\Programas MemoCash\GerenciadorMobile\Win32\Debug\Log\';
+    Arquivo      := CaminhoPasta + FormatDateTime('dd_mm_yyyy', Horario);
+  {$ELSE}
+    CaminhoPasta := 'C:\MemoCash Web\GerenciadorMobile\Log\';
+    Arquivo      := CaminhoPasta + FormatDateTime('dd_mm_yyyy', Horario);
+  {$ENDIF}
+
+  if not DirectoryExists(CaminhoPasta) then
+    ForceDirectories(CaminhoPasta);
+
+  if not DirectoryExists(Arquivo) then
+    ForceDirectories(Arquivo);
+
+  Arquivo := Arquivo + '\' + IP + '.txt';
+  //AssignFile(Log, ExtractFilePath(ParamStr(0)) + Arquivo);
+  AssignFile(Log, Arquivo);
+
+  //if not FileExists(ExtractFilePath(ParamStr(0)) + Arquivo) then
+  if not FileExists(Arquivo) then
+    Rewrite(Log)
+  else
+    Append(Log);
+
+  LogText := '[' + FormatDateTime('hh:nn:ss.zzz', Horario) + ']';
+
+ { if not IP.IsEmpty then
+    LogText := LogText + '[' + IP.PadRight(15) + ']';    }
+
+  LogText := LogText + ' ' + Descricao;
+
+  WriteLn(Log, LogText);
+  CloseFile(Log);
+end;
+
+procedure LogErro(Descricao: string; IP: string = '');
+var
+  Log: TextFile;
+  LogText: string;
+begin
+  AssignFile(Log, ExtractFilePath(ParamStr(0)) + '\LogErro.txt');
+
+  if not FileExists(ExtractFilePath(ParamStr(0)) + '\LogErro.txt') then
+    Rewrite(Log)
+  else
+    Append(Log);
+
+  LogText := '[' + FormatDateTime('dd/mm/yy hh:nn:ss.zzz', NOW) + ']';
+
+  if not IP.IsEmpty then
+    LogText := LogText + '[' + IP.PadRight(15) + ']';
+
+  LogText := LogText + ' ' + Descricao;
+
+  WriteLn(Log, LogText);
+  CloseFile(Log);
+end;
+
+procedure SetValorSenha(var senha: integer; _Conexao: TFDConnection;
+  senha_inicial, senha_final: integer; Pooled: Boolean = false);
+var
+  Qry: TFDQuery;
+  Conexao: TFDConnection;
+begin
+  try
+    try
+      Qry := TFDQuery.Create(nil);
+
+      if Pooled then
+      begin
+        Conexao := TFDConnection.Create(nil);
+        Conexao.ConnectionDefName := 'MemoCashPooled';
+        Qry.Connection := Conexao;
+      end
+      else
+        Qry.Connection := _Conexao;
+
+      with Qry do
+      begin
+        SQL.Add('SELECT pedido_senha FROM cliente_parametros;');
+        Open;
+          senha := FieldByName('pedido_senha').AsInteger;
+        Close;
+        SQL.Clear;
+
+        if senha < senha_final then
+          SQL.Add('SET sql_safe_updates = 0; UPDATE cliente_parametros SET pedido_senha = pedido_senha + 1;')
+        else
+          SQL.Add('SET sql_safe_updates = 0; UPDATE cliente_parametros SET pedido_senha = ' + senha_inicial.ToString);
+
+        ExecSQL;
+      end;
+    except
+      on E: Exception do
+    end;
+  finally
+    Qry.Close;
+    FreeAndNil(Qry);
+
+    if Pooled then
+      Conexao.Free;
+  end;
+end;
+
+function AdicionarCalculoJurosSQL(tipo_juros: string; somar: Boolean = false): string;
+begin
+  result := '';
+
+  if somar then
+    result := 'SUM(';
+
+  result := result + 'ROUND(IF(T3.vencimento_tolerancia < DATE(NOW()) AND :cobrar_juros AND ' +
+    #13 + 'T2.cancelado = 0 AND T2.status = 0 AND restante > 0, ' +
+    #13 + '(T3.restante * POW(1 + (:porcentagem_juros/100), ';
+
+  if tipo_juros.Contains('MONTH') then
+    result := result + ' 1 + ';
+
+  result := result + 'TIMESTAMPDIFF(' + tipo_juros +
+  ', T3.vencimento_tolerancia, DATE(NOW())))) - restante, 0), 2)';
+
+  if somar then
+    result := result + ')';
+
+  result := result + ' AS juros_cobrar, ';
+end;
+
+function GetJurosCliente(id_cliente: Integer; id_cliente_origem: Boolean): Double;
+var
+  Qry: TFDQuery;
+  Conexao: TFDConnection;
+begin
+  try
+    Qry     := TFDQuery.Create(nil);
+    Conexao := TFDConnection.Create(nil);
+    Conexao.ConnectionDefName := 'MemoCashPooled';
+
+    with Qry do
+    begin
+      Qry.Connection := Conexao;
+
+      SQL.Add('SELECT prazo_taxa_juros FROM clientes WHERE id = :id AND id_origem = :id_origem');
+      ParamByName('id').AsInteger        := id_cliente;
+      ParamByName('id_origem').AsBoolean := id_cliente_origem;
+      Open;
+        if RecordCount > 0 then
+          result := FieldByName('prazo_taxa_juros').AsFloat
+        else
+          result := 0;
+      Close;
+    end;
+
+    FreeAndNil(Qry);
+  finally
+    Conexao.Free;
+  end;
+end;
+
+// RETIRA CARACTERES INV¡LIDOS DA STRING ANTES
+// DE CONVERTE-LA PARA DOUBLE
+function MDouble(txt: string): Double;
+begin
+  if txt.IsEmpty then begin
+    result := 0;
+    Exit;
+  end;
+
+  result := txt.Replace('.','').Replace('R$ ','').ToDouble;
+end;
+
+function ClsStr(str: string) : string;
+begin
+  result := str.Replace(#$D#$A, ' ').Replace(#$D, '').Replace(#$A, '').Replace('\', '/');
+end;
+
+procedure SomenteNumInt(Sender: TObject; var Key: Word; var KeyChar: Char;
+Shift: TShiftState);
+begin
+  if not(KeyChar in [#8, '0' .. '9']) then
+    KeyChar := #3
+  else
+  begin
+    if (KeyChar = ',') and (TEdit(Sender).Text.Contains(',')) then
+      KeyChar := #3;
+  end;
+end;
+
+{ TMateriaPrima }
+
+function GetMateriaPrima(id_produto: integer): TObjectList<TMateriaPrima>;
+var
+  qry: TFDQuery;
+  materia_prima: TMateriaPrima;
+  Conexao: TFDConnection;
+begin
+  try
+    result := nil;
+    qry    := TFDQuery.Create(nil);
+
+    Conexao := TFDConnection.Create(nil);
+    Conexao.ConnectionDefName := 'MemoCashPooled';
+    Qry.Connection := Conexao;
+
+    with qry do
+    begin
+      with SQL do
+      begin
+        Add('SELECT T1.id, T1.controla_estoque, T1.descricao, T2.quantidade FROM produtos AS T1');
+        Add('INNER JOIN produtos_materiaprima AS T2 ON T2.id_materiaprima = T1.id');
+        Add('WHERE T2.id_produto = :id_produto');
+      end;
+      ParamByName('id_produto').AsInteger := id_produto;
+      Open;
+
+      if RecordCount > 0 then
+      begin
+        result := TObjectList<TMateriaPrima>.Create;
+        while not EOF do
+        begin
+          materia_prima                  := TMateriaPrima.Create(nil);
+          materia_prima.id               := FieldByName('id').AsInteger;
+          materia_prima.descricao        := FieldByName('descricao').AsString;
+          materia_prima.qtd              := Format('%.3f', [FieldByName('quantidade').AsFloat]);
+          materia_prima.controla_estoque := FieldByName('controla_estoque').AsBoolean;
+
+          result.Add(materia_prima);
+          materia_prima := nil;
+          Next;
+        end;
+      end;
+
+      Close;
+    end;
+
+    FreeAndNil(qry);
+  finally
+    Conexao.Free;
+  end;
+end;
+
+end.
