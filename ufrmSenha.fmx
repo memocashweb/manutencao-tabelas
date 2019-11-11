@@ -1,24 +1,26 @@
 object frmSenha: TfrmSenha
   Left = 0
   Top = 0
+  BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = None
   Caption = 'Form1'
-  ClientHeight = 311
-  ClientWidth = 296
+  ClientHeight = 414
+  ClientWidth = 360
   Position = MainFormCenter
   StyleBook = StyleBook1
-  FormFactor.Width = 320
-  FormFactor.Height = 480
+  FormFactor.Width = 360
+  FormFactor.Height = 414
+  FormFactor.Orientations = [Portrait, Landscape, InvertedPortrait, InvertedLandscape]
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
   DesignerMasterStyle = 0
   object pEntradaDado: TPanel
     Align = Client
-    Size.Width = 296.000000000000000000
-    Size.Height = 311.000000000000000000
+    Size.Width = 360.000000000000000000
+    Size.Height = 414.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 0
-    object Rectangle1: TRectangle
+    object recObjetos: TRectangle
       Align = Client
       Corners = []
       Fill.Bitmap.Bitmap.PNG = {
@@ -150,61 +152,19 @@ object frmSenha: TfrmSenha
       Fill.Bitmap.WrapMode = TileStretch
       Fill.Kind = Bitmap
       Sides = []
-      Size.Width = 296.000000000000000000
-      Size.Height = 311.000000000000000000
+      Size.Width = 360.000000000000000000
+      Size.Height = 414.000000000000000000
       Size.PlatformDefault = False
-      object edtInputDados: TEdit
-        Touch.InteractiveGestures = [LongTap, DoubleTap]
-        Align = Top
-        StyleLookup = 'edtUsuarioSenha'
-        TabOrder = 1
-        Password = True
-        TextSettings.Font.Family = 'Roboto Light'
-        TextSettings.Font.Size = 18.000000000000000000
-        TextSettings.Font.StyleExt = {00020000000000000004000000}
-        TextSettings.HorzAlign = Center
-        Position.X = 25.000000000000000000
-        Position.Y = 135.000000000000000000
-        Margins.Left = 25.000000000000000000
-        Margins.Right = 25.000000000000000000
-        Margins.Bottom = 10.000000000000000000
-        Size.Width = 246.000000000000000000
-        Size.Height = 30.000000000000000000
-        Size.PlatformDefault = False
-        StyledSettings = [FontColor]
-        OnKeyDown = edtInputDadosKeyDown
-      end
-      object edtUsuario: TEdit
-        Touch.InteractiveGestures = [LongTap, DoubleTap]
-        Align = Top
-        StyleLookup = 'edtUsuarioSenha'
-        TabOrder = 0
-        TabStop = False
-        TextSettings.Font.Family = 'Roboto Light'
-        TextSettings.Font.Size = 18.000000000000000000
-        TextSettings.Font.StyleExt = {00020000000000000004000000}
-        TextSettings.HorzAlign = Center
-        Position.X = 25.000000000000000000
-        Position.Y = 60.000000000000000000
-        Margins.Left = 25.000000000000000000
-        Margins.Right = 25.000000000000000000
-        Margins.Bottom = 10.000000000000000000
-        Size.Width = 246.000000000000000000
-        Size.Height = 30.000000000000000000
-        Size.PlatformDefault = False
-        StyledSettings = [FontColor]
-        OnKeyDown = edtInputDadosKeyDown
-      end
       object lbMensagemInput: TLabel
         Align = Top
         StyledSettings = [Style]
         Margins.Left = 15.000000000000000000
-        Margins.Top = 25.000000000000000000
+        Margins.Top = 15.000000000000000000
         Margins.Right = 15.000000000000000000
         Margins.Bottom = 5.000000000000000000
         Position.X = 15.000000000000000000
-        Position.Y = 25.000000000000000000
-        Size.Width = 266.000000000000000000
+        Position.Y = 105.000000000000000000
+        Size.Width = 330.000000000000000000
         Size.Height = 30.000000000000000000
         Size.PlatformDefault = False
         TextSettings.Font.Family = 'Roboto Light'
@@ -220,8 +180,8 @@ object frmSenha: TfrmSenha
         Margins.Right = 15.000000000000000000
         Margins.Bottom = 5.000000000000000000
         Position.X = 15.000000000000000000
-        Position.Y = 100.000000000000000000
-        Size.Width = 266.000000000000000000
+        Position.Y = 180.000000000000000000
+        Size.Width = 330.000000000000000000
         Size.Height = 30.000000000000000000
         Size.PlatformDefault = False
         TextSettings.Font.Family = 'Roboto Light'
@@ -237,18 +197,96 @@ object frmSenha: TfrmSenha
         Margins.Top = 20.000000000000000000
         Margins.Right = 60.000000000000000000
         Position.X = 60.000000000000000000
-        Position.Y = 195.000000000000000000
-        Size.Width = 176.000000000000000000
+        Position.Y = 275.000000000000000000
+        Size.Width = 240.000000000000000000
         Size.Height = 40.000000000000000000
         Size.PlatformDefault = False
         StyleLookup = 'botaoUsuarioSenha'
-        TabOrder = 2
-        TabStop = False
+        TabOrder = 3
         Text = 'Acessar [ENTER]'
         TextSettings.Font.Family = 'Roboto'
         TextSettings.Font.Size = 16.000000000000000000
         TextSettings.Font.StyleExt = {00020000000000000004000000}
         OnClick = btConfirmarEventoClick
+      end
+      object Label1: TLabel
+        Align = Top
+        StyledSettings = [Style]
+        Margins.Left = 15.000000000000000000
+        Margins.Top = 25.000000000000000000
+        Margins.Right = 15.000000000000000000
+        Margins.Bottom = 5.000000000000000000
+        Position.X = 15.000000000000000000
+        Position.Y = 25.000000000000000000
+        Size.Width = 330.000000000000000000
+        Size.Height = 30.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.Font.Family = 'Roboto Light'
+        TextSettings.Font.Size = 20.000000000000000000
+        TextSettings.FontColor = xFF282828
+        TextSettings.HorzAlign = Center
+        Text = 'Revenda'
+      end
+      object edtUsuario: TEdit
+        Tag = 7
+        Touch.InteractiveGestures = [LongTap, DoubleTap]
+        Align = Top
+        StyleLookup = 'edtUsuarioSenha'
+        TabOrder = 1
+        TextSettings.Font.Family = 'Roboto Light'
+        TextSettings.Font.Size = 18.000000000000000000
+        TextSettings.Font.StyleExt = {00020000000000000004000000}
+        TextSettings.HorzAlign = Center
+        Position.X = 25.000000000000000000
+        Position.Y = 140.000000000000000000
+        Margins.Left = 25.000000000000000000
+        Margins.Right = 25.000000000000000000
+        Margins.Bottom = 10.000000000000000000
+        Size.Width = 310.000000000000000000
+        Size.Height = 30.000000000000000000
+        Size.PlatformDefault = False
+        StyledSettings = [FontColor]
+        OnKeyDown = edtInputDadosKeyDown
+      end
+      object edtInputDados: TEdit
+        Touch.InteractiveGestures = [LongTap, DoubleTap]
+        Align = Top
+        StyleLookup = 'edtUsuarioSenha'
+        TabOrder = 2
+        Password = True
+        TextSettings.Font.Family = 'Roboto Light'
+        TextSettings.Font.Size = 18.000000000000000000
+        TextSettings.Font.StyleExt = {00020000000000000004000000}
+        TextSettings.HorzAlign = Center
+        Position.X = 25.000000000000000000
+        Position.Y = 215.000000000000000000
+        Margins.Left = 25.000000000000000000
+        Margins.Right = 25.000000000000000000
+        Margins.Bottom = 10.000000000000000000
+        Size.Width = 310.000000000000000000
+        Size.Height = 30.000000000000000000
+        Size.PlatformDefault = False
+        StyledSettings = [FontColor]
+        OnKeyDown = edtInputDadosKeyDown
+      end
+      object edtRevenda: TEdit
+        Touch.InteractiveGestures = [LongTap, DoubleTap]
+        Align = Top
+        StyleLookup = 'edtUsuarioSenha'
+        TabOrder = 0
+        TextSettings.Font.Family = 'Roboto Light'
+        TextSettings.Font.Size = 18.000000000000000000
+        TextSettings.Font.StyleExt = {00020000000000000004000000}
+        TextSettings.HorzAlign = Center
+        Position.X = 25.000000000000000000
+        Position.Y = 60.000000000000000000
+        Margins.Left = 25.000000000000000000
+        Margins.Right = 25.000000000000000000
+        Size.Width = 310.000000000000000000
+        Size.Height = 30.000000000000000000
+        Size.PlatformDefault = False
+        StyledSettings = [FontColor]
+        OnKeyDown = edtInputDadosKeyDown
       end
     end
   end

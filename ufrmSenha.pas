@@ -22,8 +22,10 @@ type
     edtInputDados: TEdit;
     lbSenha: TLabel;
     edtUsuario: TEdit;
-    Rectangle1: TRectangle;
+    recObjetos: TRectangle;
     StyleBook1: TStyleBook;
+    edtRevenda: TEdit;
+    Label1: TLabel;
     procedure btConfirmarEventoClick(Sender: TObject);
     procedure btCancelarEventoClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -92,7 +94,7 @@ end;
 
 procedure TfrmSenha.FormCreate(Sender: TObject);
 begin
-  edtUsuario.SetFocus;
+  edtRevenda.SetFocus;
   btConfirmarEvento.Text := 'Acessar[ENTER]';
   btConfirmarEvento.TextSettings.Font.Family := 'Roboto';
   btConfirmarEvento.TextSettings.Font.Size   := 16;

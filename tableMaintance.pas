@@ -614,36 +614,33 @@ var
   acao    : string;
   teste   : integer;
 begin
-  try
-    for I := 0 to ListCheckBox.Count -1 do
+  for I := 0 to ListCheckBox.Count -1 do
+  begin
+    if ListCheckBox.ListItems[I].IsChecked then
     begin
-      if ListCheckBox.ListItems[I].IsChecked then
-      begin
-        Qry            := TFDQuery.Create(nil);
-        Qry.Connection := Conexao;
+      Qry            := TFDQuery.Create(nil);
+      Qry.Connection := Conexao;
 
-        case OP of
-          Drop:
-            acao := 'DROP';
-          Truncate:
-            acao := 'TRUNCATE';
-        end;
-
-        with Qry do
-        begin
-          with SQL do
-          begin
-            Clear;
-            Add(acao + ' TABLE ' + ListCheckBox.ListItems[I].Text);
-          end;
-          ExecSQL;
-        end;
-
-        ApagarArquivoEspecificoIBD(ListCheckBox.ListItems[I].Text);
+      case OP of
+        Drop:
+          acao := 'DROP';
+        Truncate:
+          acao := 'TRUNCATE';
       end;
+
+      with Qry do
+      begin
+        with SQL do
+        begin
+          Clear;
+          Add(acao + ' TABLE IF EXISTS ' + ListCheckBox.ListItems[I].Text);
+        end;
+        ExecSQL;
+      end;
+
+      ApagarArquivoEspecificoIBD(ListCheckBox.ListItems[I].Text);
+      FreeAndNil(Qry);
     end;
-  finally
-    FreeAndNil(Qry);
   end;
 end;
 
@@ -715,6 +712,7 @@ begin
   try
     base64 := TBase64Encoding.Create;
     result := TStringList.Create;
+    result.Values['Revenda'] := frmSenha.edtRevenda.Text;
     result.Values['Cliente'] := edtIDCliente.Text;
     result.Values['Usuario'] := frmSenha.edtUsuario.Text;
     result.Values['Senha']   := base64.Encode(frmSenha.edtInputDados.Text);
