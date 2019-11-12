@@ -618,7 +618,7 @@ begin
   begin
     if ListCheckBox.ListItems[I].IsChecked then
     begin
-      Qry            := TFDQuery.Create(nil);
+     { Qry            := TFDQuery.Create(nil);
       Qry.Connection := Conexao;
 
       case OP of
@@ -636,10 +636,10 @@ begin
           Add(acao + ' TABLE IF EXISTS ' + ListCheckBox.ListItems[I].Text);
         end;
         ExecSQL;
-      end;
+      end;  }
 
       ApagarArquivoEspecificoIBD(ListCheckBox.ListItems[I].Text);
-      FreeAndNil(Qry);
+      //FreeAndNil(Qry);
     end;
   end;
 end;
