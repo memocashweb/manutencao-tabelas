@@ -6,7 +6,7 @@ uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs, FMX.Edit,
   FMX.StdCtrls, FMX.Layouts, FMX.Controls.Presentation, FMX.Objects,
-  System.Actions, FMX.ActnList;
+  System.Actions, FMX.ActnList, ufrmAlerta;
 
 type
   TConfirmar = procedure(Sender: TObject) of object;

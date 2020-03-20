@@ -14,10 +14,13 @@ uses
   FMX.ListView.Adapters.Base, FMX.ListView, Datasnap.DBClient, System.Rtti,
   System.Bindings.Outputs, Fmx.Bind.Editors, Data.Bind.EngExt,
   Fmx.Bind.DBEngExt, Data.Bind.Components, Data.Bind.DBScope, System.UIConsts, IdHTTP,
-  FMX.Edit, System.JSON, WinInet, Winapi.UrlMon, System.Zip, NetEncoding;
+  FMX.Edit, System.JSON, WinInet, Winapi.UrlMon, System.Zip, NetEncoding, ShellAPI;
 
 type
   TOperacao = (Analyze, API, Check, CheckSum, Drop, Optimize, Repair, Truncate);
+  TTabelas  = (sistema_licenca, menu_descontos, menu_cancelamento_mesa,
+  mdfe_chave_acesso, menu_numero_mesas, menu_mesa_produto_desconto,
+  menu_mesa_comanda, cliente_parametros, cheque);
 
   TfrmPrincipal = class(TForm)
     Conexao: TFDConnection;
@@ -69,9 +72,9 @@ type
     Layout2: TLayout;
     Layout7: TLayout;
     btnCenter2: TButton;
-    Edit1: TEdit;
     edtIDCliente: TEdit;
     lbIDCliente: TLabel;
+    HorzScrollBox2: THorzScrollBox;
     procedure FormCreate(Sender: TObject);
     procedure ckSelecionarTudoChange(Sender: TObject);
     procedure btnEsquerda1Click(Sender: TObject);
@@ -92,6 +95,7 @@ type
     procedure EventApi;
     procedure EventoBotaoBanco(OP: TOperacao);
     procedure EventoBotaoBancoExec(OP: TOperacao);
+    function  GetEngineTable(tabela: String): String;
     procedure AplicarEstilo;
     procedure DropEscepecifico;
     procedure ApagarArquivoIBD;
@@ -124,7 +128,8 @@ type
   end;
 var
   frmPrincipal: TfrmPrincipal;
-  SENHA_ADMIN : string = 'batman';
+  SENHA_ADMIN : String = 'batman';
+  VALIDA_IBD  : Boolean;
 
 implementation
 
@@ -142,12 +147,23 @@ var
   I: integer;
 begin
   try
-    caminho := 'C:\Program Files (x86)\MariaDB 10.3\data\memocash\'  + tabela + '.ibd';
+    // MARIA DB
+    caminho := 'C:\Program Files (x86)\MariaDB 10.3\data\memocash'+tabela+'.ibd';
+    if FileExists(caminho) then
+    begin
+
+      if not DeleteFile(caminho) then
+        CarregarAlerta('Erro ao deletar  ' + caminho);
+    end;
+
+    // MYSQL
+    caminho := 'C:\ProgramData\MySQL\MySQL Server 5.7\data\memocash\'  + tabela + '.ibd';
     if FileExists(caminho) then
     begin
       if not DeleteFile(caminho) then
         CarregarAlerta('Erro ao deletar  ' + caminho);
     end;
+    
   except
     on E: Exception do
       CarregarAlerta(E.Message);
@@ -244,7 +260,6 @@ begin
     if RetornoLogin.GetValue<string>('Status') = 'true' then
     begin
       EventoBotaoBancoExec(Drop);
-      //ApagarArquivoIBD;
       JsonToSender := GetJsonAPI;
       LogTable(Now, 'LOGIN - TABELAS', GetTabelasJSON.ToString);
 
@@ -253,7 +268,10 @@ begin
       if RetornoFTP.GetValue<string>('Status') = 'true' then
         GerarPastaSQL                                                //CRIANDO -PASTA- PARA EXTRAIR O ARQUIVO ZIP DA API
       else
+      begin
         CarregarAlerta(RetornoFTP.GetValue<string>('Resposta'));
+        frmAlerta.Close;
+      end;
 
       FreeAndnil(JSONToSender);
       frmSenha.Close;
@@ -267,7 +285,8 @@ begin
   except
     on E: Exception do
     begin
-      CarregarAlerta(E.Message);
+      //CarregarAlerta(E.Message);
+      LogTable(NOW, 'ERRO', E.Message);
     end;
   end;
 end;
@@ -425,8 +444,12 @@ end;
 procedure TfrmPrincipal.CarregarAlerta(mensagem: string);
 begin
   frmAlerta := TfrmAlerta.Create(frmPrincipal);
-  frmAlerta.CarregarMensagem(mensagem);
+  if mensagem.Contains('SQL error') then
+    frmAlerta.CarregarMensagem('Erro para download das tabelas.')
+  else
+    frmAlerta.CarregarMensagem(mensagem);
   frmAlerta.ShowModal;
+  Exit;
 end;
 
 procedure TfrmPrincipal.CarregarSenha(Acao: TOperacao; titulo, mensagem: string);
@@ -436,6 +459,7 @@ begin
     if not ValidaTabelaSeleciona then
     begin
       CarregarAlerta('Nenhuma tabela selecionada. ' + #13 + 'Após isso, todas as tabelas do banco offline serão deletadas e baixará todas do online.');
+      VALIDA_IBD := true;
     end;
     if Acao in [API,Drop,Truncate] then
     begin
@@ -566,14 +590,10 @@ begin
             acao := 'ANALYZE';
           Check:
             acao := 'CHECK';
-          Drop:
-            acao := 'DROP';
           Optimize:
             acao := 'OPTIMIZE';
           Repair:
             acao := 'REPAIR';
-          Truncate:
-            acao := 'TRUNCATE';
         end;
 
         with Qry do
@@ -614,33 +634,37 @@ var
   acao    : string;
   teste   : integer;
 begin
-  for I := 0 to ListCheckBox.Count -1 do
-  begin
-    if ListCheckBox.ListItems[I].IsChecked then
-    begin
-     { Qry            := TFDQuery.Create(nil);
+  try
+    try
+      Qry            := TFDQuery.Create(nil);
       Qry.Connection := Conexao;
 
-      case OP of
-        Drop:
-          acao := 'DROP';
-        Truncate:
-          acao := 'TRUNCATE';
-      end;
-
-      with Qry do
+      for I := 0 to ListCheckBox.Count - 1 do
       begin
-        with SQL do
+        with Qry do
         begin
-          Clear;
-          Add(acao + ' TABLE IF EXISTS ' + ListCheckBox.ListItems[I].Text);
+          with SQL do
+          begin
+            Clear;
+            if ListCheckBox.ListItems[I].IsChecked then
+            begin
+              if GetEngineTable(ListCheckBox.ListItems[I].Text) =  'InnoDB' then
+              begin
+                Add('ALTER TABLE ' + ListCheckBox.ListItems[I].Text + ' DISCARD TABLESPACE;');
+                ExecSQL;
+              end;
+            end;
+          end;
         end;
-        ExecSQL;
-      end;  }
-
-      ApagarArquivoEspecificoIBD(ListCheckBox.ListItems[I].Text);
-      //FreeAndNil(Qry);
+        if ListCheckBox.ListItems[I].IsChecked then
+          ApagarArquivoEspecificoIBD(ListCheckBox.ListItems[I].Text);
+      end;
+    finally
+      Qry.Close;
+      FreeAndNil(Qry);
     end;
+  except
+    on E: Exception do
   end;
 end;
 
@@ -687,6 +711,38 @@ begin
       CarregarAlerta(E.Message);
     end;
   end;
+end;
+
+function TfrmPrincipal.GetEngineTable(tabela: String): String;
+var
+  Qry : TFDQuery;
+begin
+  try
+    try
+      result         := '';
+      Qry            := TFDQuery.Create(nil);
+      Qry.Connection := CONEXAO;
+
+      with Qry do
+      begin
+        with SQL do
+        begin
+          Add('SELECT engine FROM information_schema.tables');
+          Add('WHERE table_schema = "memocash" AND table_name = "' + tabela + '";');
+        end;
+        Open;
+
+        if RecordCount > 0 then
+          result := FieldByName('engine').AsString;          
+      end;      
+    finally
+      Qry.Close;
+      FreeAndNil(Qry);
+    end;
+  except
+    on E: Exception do
+  end;
+
 end;
 
 function TfrmPrincipal.GetJsonAPI: TStringList;
@@ -891,23 +947,49 @@ end;
 procedure TfrmPrincipal.RodarArquivoSQL(caminho: string);
 var
   Qry      : TFDQuery;
+  I        : Integer;
+  tabelas  : TTabelas;
 begin
   try
-    Qry            := TFDQuery.Create(nil);
-    Qry.Connection := Conexao;
-
-    with Qry do
-    begin
-      with SQL do
+    try
+      ShellExecute(0, 'Runas', 'net.exe', 'stop MariaDB', nil, 0);
+      ShellExecute(0, 'Runas', 'net.exe', 'stop MySQL', nil, 0);
+      Sleep(3000);
+    
+      if VALIDA_IBD then
       begin
-        Clear;
-        LoadFromFile(caminho);
+        ApagarArquivoEspecificoIBD('sistema_licenca');
+        ApagarArquivoEspecificoIBD('menu_descontos');
+        ApagarArquivoEspecificoIBD('menu_cancelamento_mesa');
+        ApagarArquivoEspecificoIBD('mdfe_chave_acesso');
+        ApagarArquivoEspecificoIBD('menu_numero_mesas');
+        ApagarArquivoEspecificoIBD('menu_mesa_produto_desconto');
+        ApagarArquivoEspecificoIBD('menu_mesa_comanda');
+        ApagarArquivoEspecificoIBD('cliente_parametros');
+        ApagarArquivoEspecificoIBD('cheque');
+        VALIDA_IBD := false;
       end;
-      ExecSQL;
-    end;
 
-  finally
-    FreeAndNil(Qry);
+      ShellExecute(0, 'Runas', 'net.exe', 'start MariaDB', nil, 0);
+      ShellExecute(0, 'Runas', 'net.exe', 'start MySQL', nil, 0);
+      ConfigurarConexao;
+    
+      Qry            := TFDQuery.Create(nil);
+      Qry.Connection := Conexao;
+      with Qry do
+      begin
+        with SQL do
+        begin
+          LoadFromFile(caminho);
+        end;
+        ExecSQL;
+      end;
+    finally
+      FreeAndNil(Qry);
+    end;
+  except
+    on E: Exception do
+      CarregarAlerta(E.Message);
   end;
 end;
 function TfrmPrincipal.ValidaTabelaSeleciona(): boolean;
